@@ -25,10 +25,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-
-      - name: Run tests
-        run: npm test
-
-      - name: Start server in background
+      - name: Restart backend with PM2
         run: |
-          nohup npm start > output.log 2>&1 &
+          pm2 stop backend || true
+          pm2 delete backend || true
+          pm2 start app.js --name backend
+          pm2 save

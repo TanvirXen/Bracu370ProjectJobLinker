@@ -29,7 +29,7 @@ exports.createInterview = async (req, res) => {
 
   try {
     conn = await pool.getConnection();
-
+const formattedDatetime = new Date(interview_datetime).toISOString().slice(0, 19).replace('T', ' ');
     const result = await conn.query(`
       SELECT u.email, u.name AS candidate_name, j.title AS job_title, j.description AS job_description
       FROM applications a
@@ -48,7 +48,7 @@ exports.createInterview = async (req, res) => {
     await conn.query(
       `INSERT INTO interviews (application_id, interview_datetime, mode, status, notification_sent)
        VALUES (?, ?, ?, 'scheduled', true)`,
-      [application_id, interview_datetime, mode]
+      [application_id, formattedDatetime, mode]
     );
 
     await conn.query(

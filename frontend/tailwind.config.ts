@@ -1,6 +1,6 @@
 
 import type { Config } from "tailwindcss";
-
+import lineClamp from '@tailwindcss/line-clamp'
 export default {
   darkMode: ["class"],
   content: [
@@ -22,6 +22,7 @@ export default {
         '2xl': '1400px',
       }
     },
+  plugins: [lineClamp],
     extend: {
       colors: {
         border: 'hsl(var(--border))',

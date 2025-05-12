@@ -22,12 +22,14 @@ const Signup = () => {
   const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [companyName, setcompanyName] = useState('');
+  const [companyWebsite, setcompanyWebsite] = useState('');
+  const [jobTitle, setjobTitle] = useState('');
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await register(name, email, password, role);
+      await register(name, email, password, role,companyName,companyWebsite,jobTitle);
       toast({
         title: "Registration successful!",
         description: "Please login to continue.",
@@ -39,32 +41,32 @@ const Signup = () => {
       setIsLoading(false);
     }
   };
-  
+
   // Check password strength
   const getPasswordStrength = () => {
     if (!password) return { strength: 0, label: '' };
-    
+
     let strength = 0;
     if (password.length >= 8) strength += 1;
     if (/[A-Z]/.test(password)) strength += 1;
     if (/[0-9]/.test(password)) strength += 1;
     if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-    
+
     let label = '';
     if (strength <= 1) label = 'Weak';
     else if (strength <= 2) label = 'Fair';
     else if (strength <= 3) label = 'Good';
     else label = 'Strong';
-    
+
     return { strength, label };
   };
-  
+
   const passwordStrength = getPasswordStrength();
-  
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
+
       <main className="flex-grow pt-20 flex items-center justify-center p-4">
         <AnimatedElement>
           <Card className="w-full max-w-md">
@@ -83,39 +85,39 @@ const Signup = () => {
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    placeholder="John Doe" 
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="name@example.com" 
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <div className="relative">
-                    <Input 
-                      id="password" 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="Create a strong password" 
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a strong password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
-                    <button 
+                    <button
                       type="button"
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
                       onClick={() => setShowPassword(!showPassword)}
@@ -127,29 +129,28 @@ const Signup = () => {
                       )}
                     </button>
                   </div>
-                  
+
                   {/* Password strength indicator */}
                   {password && (
                     <div className="mt-2">
                       <div className="flex justify-between items-center mb-1">
                         <div className="text-sm">Password strength: <span className={
                           passwordStrength.label === 'Weak' ? 'text-red-500' :
-                          passwordStrength.label === 'Fair' ? 'text-orange-500' :
-                          passwordStrength.label === 'Good' ? 'text-yellow-500' :
-                          'text-green-500'
+                            passwordStrength.label === 'Fair' ? 'text-orange-500' :
+                              passwordStrength.label === 'Good' ? 'text-yellow-500' :
+                                'text-green-500'
                         }>{passwordStrength.label}</span></div>
                       </div>
                       <div className="w-full h-1 bg-muted overflow-hidden rounded-full">
-                        <div className={`h-full ${
-                          passwordStrength.label === 'Weak' ? 'bg-red-500' :
+                        <div className={`h-full ${passwordStrength.label === 'Weak' ? 'bg-red-500' :
                           passwordStrength.label === 'Fair' ? 'bg-orange-500' :
-                          passwordStrength.label === 'Good' ? 'bg-yellow-500' :
-                          'bg-green-500'
-                        }`} style={{ width: `${(passwordStrength.strength / 4) * 100}%` }}></div>
+                            passwordStrength.label === 'Good' ? 'bg-yellow-500' :
+                              'bg-green-500'
+                          }`} style={{ width: `${(passwordStrength.strength / 4) * 100}%` }}></div>
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="flex items-center text-xs text-muted-foreground">
                       <div className={`w-3 h-3 rounded-full mr-1 ${password.length >= 8 ? 'bg-green-500' : 'bg-muted'}`}></div>
@@ -169,7 +170,7 @@ const Signup = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="role">Create account as</Label>
                   <Select value={role} onValueChange={(value) => setRole(value as 'candidate' | 'employer')}>
@@ -182,16 +183,52 @@ const Signup = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
-                <Button 
-                  type="submit" 
+                {role == "employer" ? <div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Company Name</Label>
+                    <Input
+                      id="Company Name"
+                      type="text"
+                      placeholder="Your Company Name"
+                      value={companyName}
+                      onChange={(e) => setcompanyName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Company Website</Label>
+                    <Input
+                      id="Company Website"
+                      type="text"
+                      placeholder="https://yourcompanywebsite.com/"
+                      value={companyWebsite}
+                      onChange={(e) => setcompanyWebsite(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Job Title</Label>
+                    <Input
+                      id="Job Title"
+                      type="text"
+                      placeholder="Your Designation"
+                      value={jobTitle}
+                      onChange={(e) => setjobTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div> : ""}
+
+
+                <Button
+                  type="submit"
                   className="w-full bg-brand-red hover:bg-brand-red/90"
                   disabled={isLoading}
                 >
                   {isLoading ? "Creating account..." : "Create Account"}
                 </Button>
               </form>
-  
+
             </CardContent>
             <CardFooter className="flex justify-center">
               <p className="text-sm text-muted-foreground">
@@ -204,7 +241,7 @@ const Signup = () => {
           </Card>
         </AnimatedElement>
       </main>
-      
+
       <footer className="bg-brand-charcoal dark:bg-brand-purple text-white py-6">
         <div className="container mx-auto px-4 text-center">
           <p className="text-white/70">© {new Date().getFullYear()} JobLinker. All rights reserved.</p>

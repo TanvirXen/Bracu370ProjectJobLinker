@@ -31,6 +31,9 @@ const formSchema = z.object({
   experience_required: z
     .string()
     .min(1, { message: "Experience required is required" }),
+      salary: z
+    .string()
+    .min(1, { message: "Experience required is required" }),
   status: z.string().default("open"),
 });
 
@@ -53,6 +56,7 @@ export function PostJobForm({ onSuccess }: { onSuccess?: () => void }) {
       location: "",
       experience_required: "",
       status: "open",
+      salary:"",
     },
   });
 
@@ -231,7 +235,19 @@ export function PostJobForm({ onSuccess }: { onSuccess?: () => void }) {
             </FormItem>
           )}
         />
-
+        <FormField
+          control={form.control}
+          name="salary"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Salary</FormLabel>
+              <FormControl>
+                <Input type="number" min="0" placeholder="e.g. 20000" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="description"

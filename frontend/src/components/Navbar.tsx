@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { Menu, X, Briefcase } from "lucide-react";
@@ -10,7 +10,7 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, logout } = useAuth();
-
+const navigate = useNavigate();
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -27,11 +27,10 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed w-full top-0 z-50 transition-all duration-300 ${
-        isScrolled
+      className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled
           ? "bg-white/80 dark:bg-brand-purple/80 backdrop-blur-md py-2 shadow-md"
           : "bg-transparent py-4"
-      }`}
+        }`}
     >
       <div className="container mx-auto px-4 flex items-center justify-between">
         <Link to="/" className="flex items-center space-x-2 text-2xl font-bold">
@@ -62,7 +61,10 @@ export function Navbar() {
             ) : (
               <Button
                 variant="ghost"
-                onClick={logout}
+                onClick={()=>{
+                  logout()
+                  navigate("/");
+                }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 Logout
@@ -129,16 +131,18 @@ export function Navbar() {
 }
 
 const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
-  const { isAuthenticated, isEmployer } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const role = localStorage.getItem("role"); // 'employer' or 'candidate'
 
   const links = [
-    { name: "Find Jobs", path: "/jobs" },
-    { name: "For Employers", path: "/employers" },
+    ...(role === "candidate" ? [{ name: "Find Jobs", path: "/jobs" }] : []),
+    ...(role === "employer" ? [{ name: "For Employers", path: "/employers" }] : []),
     { name: "Resources", path: "/resources" },
     ...(isAuthenticated
       ? [
           { name: "Dashboard", path: "/dashboard" },
-          { name: "Create Profile", path: "/profile/update" },
+          { name: "Profile", path: "/profile/update" },
           { name: "Interviews", path: "/interviews" },
           { name: "Reviews", path: "/reviews" },
         ]
@@ -147,17 +151,20 @@ const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
 
   return (
     <>
-      {links.map((link) => (
-        <Link
-          key={link.name}
-          to={link.path}
-          className={`font-medium transition-colors duration-300 hover:text-brand-red ${
-            mobile ? "text-lg py-2" : ""
-          }`}
-        >
-          {link.name}
-        </Link>
-      ))}
+      {links.map((link) => {
+        const isActive = location.pathname === link.path;
+
+        return (
+          <Link
+            key={link.name}
+            to={link.path}
+            className={`font-medium transition-colors duration-300 ${isActive ? "text-brand-red" : "hover:text-brand-red"
+              } ${mobile ? "text-lg py-2" : ""}`}
+          >
+            {link.name}
+          </Link>
+        );
+      })}
     </>
   );
 };

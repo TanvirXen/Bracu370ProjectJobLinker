@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-
+import { Navigate, useLocation } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 interface User {
   id: number;
   email: string;
@@ -10,7 +11,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: 'candidate' | 'employer') => Promise<void>;
+  register: (name: string, email: string, password: string, role: 'candidate' | 'employer', companyName: string,companyWebsite: string,jobTitle: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isCandidate: boolean;
@@ -40,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login `, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,6 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       const data = await response.json();
       localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
       setToken(data.token);
       
       // Decode token to get user info
@@ -69,14 +71,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const register = async (name: string, email: string, password: string, role: 'candidate' | 'employer') => {
+  const register = async (name: string, email: string, password: string, role: 'candidate' | 'employer', companyName: string,companyWebsite: string,jobTitle: string) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role ,company_name:companyName, company_website:companyWebsite, job_title:jobTitle}),
       });
 
       if (!response.ok) {
@@ -93,8 +95,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('role');
     setToken(null);
     setUser(null);
+
   };
 
   return (

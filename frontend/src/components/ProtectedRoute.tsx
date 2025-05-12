@@ -5,20 +5,20 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: ('candidate' | 'employer')[];
 }
-
+type RoleType = 'candidate' | 'employer';
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user, isAuthenticated } = useAuth();
+  const role=localStorage.getItem("role")
+  const token=localStorage.getItem("token")
   const location = useLocation();
 
-  if (!isAuthenticated) {
+  if (!token) {
     // Redirect to login if not authenticated
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
-    // Redirect to home if role doesn't match
-    return <Navigate to="/" replace />;
-  }
+if (allowedRoles && role && !allowedRoles.includes(role as RoleType)) {
+  return <Navigate to="/" replace />;
+}
 
   return <>{children}</>;
 }; 

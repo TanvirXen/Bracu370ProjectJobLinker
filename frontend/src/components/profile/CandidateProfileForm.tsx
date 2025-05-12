@@ -1,8 +1,8 @@
-import React from "react";
+import React,{useState,useEffect} from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CandidateProfile } from "@/types/profile";
+import { BaseProfile } from "@/types/profile";
 import { SkillSearch } from "./SkillSearch";
 import { Button } from "@/components/ui/button";
 import { X, Plus } from "lucide-react";
@@ -10,20 +10,20 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/components/ui/use-toast";
 
 interface CandidateProfileFormProps {
-  formData: Partial<CandidateProfile>;
-  setFormData: React.Dispatch<React.SetStateAction<Partial<CandidateProfile>>>;
-  onSubmit: (data: Partial<CandidateProfile>) => Promise<void>;
+  formData: BaseProfile;
+  setFormData: React.Dispatch<React.SetStateAction<BaseProfile>>;
+  // onSubmit: (data: BaseProfile) => Promise<void>;
 }
 
 export const CandidateProfileForm = ({
   formData,
   setFormData,
-  onSubmit,
 }: CandidateProfileFormProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [showSkillSearch, setShowSkillSearch] = React.useState(false);
 
+    const [loading, setLoading] = useState<boolean>(true);
   const handleSkillSelect = async (
     skillId: number,
     proficiencyLevel: number,
@@ -66,7 +66,7 @@ export const CandidateProfileForm = ({
           skills.push({
             skill_id: skillId,
             proficiency_level: proficiencyLevel,
-            name: skillName,
+            skill_name: skillName,
           });
         }
 
@@ -136,68 +136,6 @@ export const CandidateProfileForm = ({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Label htmlFor="bio">Bio</Label>
-        <Textarea
-          id="bio"
-          name="bio"
-          value={formData.bio || ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, bio: e.target.value }))
-          }
-          className="mt-1 bg-white/80 dark:bg-brand-purple/20 border border-gray-300 dark:border-gray-600 focus:border-brand-red dark:focus:border-brand-tangerine"
-          rows={4}
-          placeholder="Tell us about yourself..."
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="location">Location</Label>
-        <Input
-          type="text"
-          id="location"
-          name="location"
-          value={formData.location || ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, location: e.target.value }))
-          }
-          className="mt-1 bg-white/80 dark:bg-brand-purple/20 border border-gray-300 dark:border-gray-600 focus:border-brand-red dark:focus:border-brand-tangerine"
-          placeholder="Enter your location"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="experience_years">Years of Experience</Label>
-        <Input
-          type="number"
-          id="experience_years"
-          name="experience_years"
-          value={formData.experience_years || ""}
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              experience_years: parseInt(e.target.value),
-            }))
-          }
-          className="mt-1 bg-white/80 dark:bg-brand-purple/20 border border-gray-300 dark:border-gray-600 focus:border-brand-red dark:focus:border-brand-tangerine"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="education">Education</Label>
-        <Textarea
-          id="education"
-          name="education"
-          value={formData.education || ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, education: e.target.value }))
-          }
-          className="mt-1 bg-white/80 dark:bg-brand-purple/20 border border-gray-300 dark:border-gray-600 focus:border-brand-red dark:focus:border-brand-tangerine"
-          rows={4}
-          placeholder="Enter your education details"
-        />
-      </div>
-
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-lg font-medium text-brand-charcoal dark:text-white">
@@ -234,7 +172,7 @@ export const CandidateProfileForm = ({
               className="flex items-center justify-between p-3 bg-white/50 dark:bg-brand-purple/10 rounded-lg border border-gray-300 dark:border-gray-600"
             >
               <div>
-                <span className="font-medium">{skill.name}</span>
+                <span className="font-medium">{skill.skill_name}</span>
                 <span className="text-sm text-muted-foreground ml-2">
                   (Level {skill.proficiency_level})
                 </span>

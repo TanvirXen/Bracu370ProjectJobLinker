@@ -25,7 +25,7 @@ const ProfileUpdate: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-sand to-white dark:from-brand-purple dark:to-brand-purple/60">
       <Navbar />
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-12 pt-20">
         <AnimatedElement animation="slide-in">
           <div className="max-w-4xl mx-auto">
             <div className="glass dark:glass-dark p-8 rounded-xl">

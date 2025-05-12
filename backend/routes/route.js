@@ -10,7 +10,7 @@ const jobController = require("../controllers/jobController");
 const profileController = require("../controllers/profileController");
 const reviewController = require("../controllers/reviewController");
 const skillController = require("../controllers/skillController");
-
+const appController = require('../controllers/applicationController');
 // Middlewares
 const { authenticate } = require("../middlewares/authMiddleware");
 const { roleCheck } = require("../middlewares/roleMiddleware");
@@ -18,7 +18,8 @@ const { roleCheck } = require("../middlewares/roleMiddleware");
 // ───────────────────── AUTH ─────────────────────
 router.post("/auth/register", authController.register);
 router.post("/auth/login", authController.login);
-
+router.post('/apply/:id', authenticate,appController.createApplication);
+router.get('/getapplications',authenticate, appController.getApplications);
 // ──────────────────── PROFILE ───────────────────
 router.get("/profile", authenticate, profileController.getProfile);
 router.put("/profile/update", authenticate, profileController.updateProfile);
@@ -38,8 +39,10 @@ router.put(
 );
 
 // ───────────────────── JOBS ─────────────────────
+router.get("/jobs/emp", authenticate, jobController.getAllJobsEmployer);
 router.get("/jobs", jobController.getAllJobs);
-router.get("/jobs/:id", jobController.getJobById);
+router.get("/jobs/:id", authenticate,jobController.getJobById);
+
 router.post(
   "/jobs",
   authenticate,
@@ -71,8 +74,8 @@ router.post(
   roleCheck("candidate"),
   skillController.addSkillToCandidate
 );
-router.get("/candidate-skills/:userId", skillController.getCandidateSkills);
-
+router.get("/candidate-skills", authenticate, skillController.getCandidateSkills);
+router.delete("/candidate-skills/:skill_id", authenticate, skillController.deleteCandidateSkill);
 // ──────────────────── REVIEWS ───────────────────
 router.post("/reviews", authenticate, reviewController.createReview);
 router.get("/reviews/:userId", reviewController.getReviewsForUser);

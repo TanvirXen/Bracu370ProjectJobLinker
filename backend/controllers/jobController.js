@@ -1,20 +1,160 @@
 const pool = require("../models/db");
+// Utility to safely convert BigInt to string for JSON serialization
+function convertBigIntToString(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(convertBigIntToString);
+  } else if (obj instanceof Date) {
+    return obj.toISOString(); // ✅ preserve proper date string
+  } else if (obj && typeof obj === "object") {
+    return Object.entries(obj).reduce((acc, [key, value]) => {
+      if (typeof value === "bigint") {
+        acc[key] = value.toString();
+      } else {
+        acc[key] = convertBigIntToString(value);
+      }
+      return acc;
+    }, {});
+  }
+  return obj;
+}
+
+
 exports.getJobById = async (req, res) => {
   const { id } = req.params;
+  const { userId, role } = req.user;
 
   try {
     const conn = await pool.getConnection();
-    const [jobs] = await conn.query("SELECT * FROM jobs WHERE id = ?", [id]);
-    conn.release();
 
-    if (jobs.length === 0) {
+    // 1. Get job and recruiter info
+    const jobRows = await conn.query(`
+      SELECT j.*, rp.company_name, rp.company_website
+      FROM jobs j
+      JOIN recruiter_profiles rp ON j.employer_id = rp.user_id
+      WHERE j.id = ?
+    `, [id]);
+
+    if (jobRows.length === 0) {
+      conn.release();
       return res.status(404).json({ message: "Job not found" });
     }
 
-    res.json(jobs[0]);
+    const job = jobRows[0];
+
+    if (role === "candidate") {
+      // 2. Candidate profile (location)
+      const candidateRows = await conn.query(
+        `SELECT location FROM candidate_profiles WHERE user_id = ?`,
+        [userId]
+      );
+      const candidate = candidateRows[0];
+
+      // 3. Candidate skills
+      const candidateSkillsRows = await conn.query(`
+        SELECT cs.skill_id, cs.proficiency_level, s.name
+        FROM candidate_skills cs
+        JOIN skills s ON cs.skill_id = s.id
+        WHERE cs.user_id = ?
+      `, [userId]);
+
+      const candidateSkills = candidateSkillsRows || [];
+
+      // 4. Job required skills
+      const jobSkillsRows = await conn.query(`
+        SELECT js.skill_id, js.required_level, s.name
+        FROM job_skills js
+        JOIN skills s ON js.skill_id = s.id
+        WHERE js.job_id = ?
+      `, [id]);
+
+      const jobSkills = jobSkillsRows || [];
+
+      // 5. Skill match breakdown
+      let matched = 0;
+      const skillMatches = jobSkills.map(js => {
+        const candidateSkill = candidateSkills.find(cs => cs.skill_id === js.skill_id);
+        const candidateLevel = candidateSkill ? candidateSkill.proficiency_level : 0;
+        const matchPercent = ((Math.min(candidateLevel, js.required_level) / js.required_level) * 100).toFixed(2);
+
+        matched += Math.min(candidateLevel, js.required_level) / js.required_level;
+
+        return {
+          skillName: js.name,
+          requiredLevel: js.required_level,
+          candidateLevel,
+          matchPercentage: matchPercent
+        };
+      });
+
+      const skillMatchPercentage = jobSkills.length > 0
+        ? (matched / jobSkills.length) * 100
+        : 0;
+
+      // 6. Location match
+
+
+      const locationMatch = job?.location?.trim().toLowerCase() === candidate?.location?.trim().toLowerCase() ? 100 : 0;
+
+      const overallMatch = (skillMatchPercentage * 0.7 + locationMatch * 0.3).toFixed(2);
+
+      conn.release();
+      console.log(job)
+      return res.json(convertBigIntToString({
+        ...job,
+        jobSkills: jobSkills.map(js => ({
+          skillName: js.name,
+          requiredLevel: js.required_level
+        })),
+        match: {
+          skillMatchPercentage: skillMatchPercentage.toFixed(2),
+          locationMatchPercentage: locationMatch,
+          overallMatchPercentage: overallMatch,
+          skills: skillMatches,
+
+        }
+      }));
+
+    } else if (role === "employer") {
+      const ownJob = job.employer_id.toString() === userId.toString();
+      let applications = [];
+      const jobSkillsRows = await conn.query(`
+        SELECT js.skill_id, js.required_level, s.name
+        FROM job_skills js
+        JOIN skills s ON js.skill_id = s.id
+        WHERE js.job_id = ?
+      `, [id]);
+
+      const jobSkills = jobSkillsRows || [];
+      if (ownJob) {
+        applications = await conn.query(`
+          SELECT a.*, u.name, u.email, cp.location, cp.experience_years
+          FROM applications a
+          JOIN users u ON a.candidate_id = u.id
+          LEFT JOIN candidate_profiles cp ON cp.user_id = u.id
+          WHERE a.job_id = ?
+        `, [id]);
+      }
+
+      conn.release();
+
+      return res.json(convertBigIntToString({
+        ...job,
+        jobSkills: jobSkills.map(js => ({
+          skillName: js.name,
+          requiredLevel: js.required_level
+        })),
+        ownJob,
+        applications,
+
+      }));
+    } else {
+      conn.release();
+      return res.status(403).json({ message: "Unauthorized role" });
+    }
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to fetch job" });
+    return res.status(500).json({ message: "Failed to fetch job" });
   }
 };
 // GET /jobs
@@ -48,6 +188,73 @@ exports.getAllJobs = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch jobs" });
   }
 };
+exports.getAllJobsEmployer = async (req, res) => {
+  const { userId, role } = req.user;
+
+  if (role !== "employer") {
+    return res.status(403).json({ message: "Access denied: Only employers can view their job listings." });
+  }
+
+  try {
+    const conn = await pool.getConnection();
+
+    // 1. Fetch jobs posted by this employer
+    const jobRows = await conn.query(
+      `SELECT * FROM jobs WHERE employer_id = ? ORDER BY posted_at DESC`,
+      [userId]
+    );
+
+    // Convert BigInts to Numbers
+    const jobs = jobRows.map((job) => {
+      const converted = {};
+      for (const key in job) {
+        converted[key] =
+          typeof job[key] === "bigint" ? Number(job[key]) : job[key];
+      }
+      return converted;
+    });
+
+    const jobIds = jobs.map((job) => job.id);
+
+    let jobSkillsMap = {};
+
+    // 2. If there are jobs, fetch their skills
+    if (jobIds.length > 0) {
+      const skillRows = await conn.query(
+        `SELECT js.job_id, js.required_level, s.id AS skill_id, s.name AS skill_name
+         FROM job_skills js
+         JOIN skills s ON js.skill_id = s.id
+         WHERE js.job_id IN (${jobIds.map(() => '?').join(',')})`,
+        jobIds
+      );
+
+      // Group skills by job_id
+      jobSkillsMap = skillRows.reduce((acc, row) => {
+        const jobId = Number(row.job_id);
+        if (!acc[jobId]) acc[jobId] = [];
+        acc[jobId].push({
+          skill_id: Number(row.skill_id),
+          name: row.skill_name,
+          required_level: row.required_level
+        });
+        return acc;
+      }, {});
+    }
+
+    // 3. Attach skills to each job
+    const jobsWithSkills = jobs.map((job) => ({
+      ...job,
+      skills: jobSkillsMap[job.id] || []
+    }));
+
+    conn.release();
+
+    res.status(200).json({ jobs: jobsWithSkills });
+  } catch (err) {
+    console.error("getAllJobs error:", err);
+    res.status(500).json({ message: "Failed to fetch employer's jobs" });
+  }
+};
 // POST /jobs (employer only)
 exports.createJob = async (req, res) => {
   const { userId } = req.user; // role already verified by middleware
@@ -56,6 +263,7 @@ exports.createJob = async (req, res) => {
     description,
     location,
     experience_required,
+    salary,
     status = "open",
   } = req.body;
 
@@ -65,14 +273,14 @@ exports.createJob = async (req, res) => {
 
   try {
     const conn = await pool.getConnection();
-    const [result] = await conn.query(
-      `INSERT INTO jobs (employer_id, title, description, location, experience_required, status)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, title, description, location, experience_required, status]
+    const result = await conn.query(
+      `INSERT INTO jobs (employer_id, title, description, location, experience_required, status,salary)
+         VALUES (?, ?, ?, ?, ?, ?,?)`,
+      [userId, title, description, location, experience_required, status, salary]
     );
 
     console.log("MySQL result:", result); // Debug log
-    const jobId = result.insertId;
+    const jobId = Number(result.insertId);
     console.log("Created job with ID:", jobId); // Debug log
 
     // Verify the job was created by fetching it

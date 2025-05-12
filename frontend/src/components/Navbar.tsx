@@ -144,7 +144,7 @@ const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
           { name: "Dashboard", path: "/dashboard" },
           { name: "Profile", path: "/profile/update" },
           { name: "Interviews", path: "/interviews" },
-          { name: "Reviews", path: "/reviews" },
+          // { name: "Reviews", path: "/reviews" },
         ]
       : []),
   ];

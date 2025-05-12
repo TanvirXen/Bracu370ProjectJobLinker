@@ -57,6 +57,7 @@ type Application = {
 
 type Props = {
   application: Application;
+    fetchApplications: () => Promise<void>;
 };
 const Dashboard = () => {
   const { user } = useAuth();
@@ -67,6 +68,29 @@ const Dashboard = () => {
     const [applications, setapplications] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const role = localStorage.getItem('role')
+     const fetchApplications = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/getapplications`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile");
+        }
+
+        const data = await response.json();
+        setapplications(data);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -91,29 +115,7 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-    const fetchApplications = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/getapplications`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch profile");
-        }
-
-        const data = await response.json();
-        setapplications(data);
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+ 
     fetchProfile();
     fetchApplications();
   }, []);
@@ -151,7 +153,7 @@ const Dashboard = () => {
       </div>
     );
   }
-console.log(jobs)
+
   if (!profile) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -371,7 +373,7 @@ console.log(jobs)
             <div className="space-y-4">
               {applications?.map((app, idx) => (
                 <AnimatedElement key={app.id} delay={idx * 100}>
-    <ApplicationCard application={app} />
+    <ApplicationCard application={app} fetchApplications={fetchApplications} />
                 </AnimatedElement>
               ))}
             </div>
@@ -384,62 +386,103 @@ console.log(jobs)
 
   );
 };
-
-const ApplicationCard: React.FC<Props> = ({ application }) => {
-  const [interviewDate, setInterviewDate] = useState<Date | undefined>(undefined);
+const ApplicationCard: React.FC<Props> = ({ application, fetchApplications }) => {
+  const [interviewDate, setInterviewDate] = useState<Date | undefined>();
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
+  const [job, setJobs] = useState<any>(null);
 
   const handleSchedule = () => {
     if (!interviewDate) return alert("Please pick a date first.");
-    console.log(`📅 Scheduled interview with ${application.candidate_name} on ${interviewDate}`);
-    // TODO: Replace with actual API call
+    createAppliedJobs();
   };
 
+  const createAppliedJobs = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/interviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          application_id: application.id,
+          interview_datetime: interviewDate,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create interview");
+      }
+
+      await response.json();
+      fetchApplications();
+      setIsDialogOpen(false);      // ✅ Close modal
+      setInterviewDate(undefined); // ✅ Reset date
+    } catch (error) {
+      console.error("Error creating interview:", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!application?.job_id || !application?.candidate_id) return;
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/jobs/${application.job_id}/${application.candidate_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to fetch job");
+        const data = await response.json();
+        setJobs(data);
+      } catch (error) {
+        console.error("Error fetching job data:", error);
+      }
+    };
+
+    fetchJobs();
+  }, [application?.job_id, application?.candidate_id]);
+
   return (
-    <div className="p-5 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-      <h3 className="text-lg font-semibold text-blue-700 mb-1">{application.title}</h3>
-      <p className="text-sm text-gray-600 mb-2">Application ID: #{application.id}</p>
-
-      <div className="space-y-2 text-sm text-gray-700">
-        <div className="flex items-center gap-2">
-          <Briefcase size={16} />
-          <span className="font-medium">{application.candidate_name}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Mail size={16} />
-          <span>{application.email}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <MapPin size={16} />
-          <span>{application.candidate_location}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Calendar size={16} />
-          <span>
-            Applied on: {new Date(application.applied_at).toLocaleDateString()}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="font-medium">Experience:</span>
-          <span>{application.experience_years} years</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="font-medium">Status:</span>
-          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full capitalize">
-            {application.status}
-          </span>
-        </div>
+    <div className="p-6 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition bg-white space-y-6">
+      {/* Header */}
+      <div>
+        <h3 className="text-xl font-semibold text-blue-700 mb-1">{application.title}</h3>
+        <p className="text-sm text-gray-600">Application ID: #{application.id}</p>
       </div>
 
-      {/* Schedule Interview Button + Modal */}
-      <div className="mt-4">
-        <Dialog>
+      {/* Candidate Info */}
+      <div className="space-y-2 text-sm text-gray-800">
+        <InfoRow icon={<Briefcase size={16} />} label={application.candidate_name} />
+        <InfoRow icon={<Mail size={16} />} label={application.email} />
+        <InfoRow icon={<MapPin size={16} />} label={application.candidate_location} />
+        <InfoRow icon={<Calendar size={16} />} label={`Applied on: ${new Date(application.applied_at).toLocaleDateString()}`} />
+        <InfoRow label={`Experience: ${application.experience_years} years`} />
+        <InfoRow
+          label={
+            <>
+              <span className="font-medium">Status:</span>{" "}
+              <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full capitalize">
+                {application.status}
+              </span>
+            </>
+          }
+        />
+      </div>
+
+      {/* Schedule Interview */}
+      <div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline"   className="bg-brand-red/90 hover:bg-brand-red transition text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-brand-red/90 hover:bg-brand-red transition text-white font-semibold w-full sm:w-auto"
+            >
               Schedule Interview
             </Button>
           </DialogTrigger>
@@ -448,29 +491,102 @@ const ApplicationCard: React.FC<Props> = ({ application }) => {
               <DialogTitle>Schedule Interview</DialogTitle>
             </DialogHeader>
 
-            <DatePicker
-              mode="single"
-              selected={interviewDate}
-              onSelect={setInterviewDate}
-              className="rounded-md border mt-4"
-            />
+<DatePicker
+  mode="single"
+  selected={interviewDate}
+  onSelect={(date) => setInterviewDate(date ?? undefined)}
+  className="w-full mt-4 rounded-md border p-2"
+/>
 
             <DialogFooter className="mt-4">
-<Button
-  onClick={handleSchedule}
-  disabled={!interviewDate}
-  className="bg-brand-red/90 hover:bg-brand-red transition text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
->
-  Schedule
-</Button>
+              <Button
+                onClick={handleSchedule}
+                disabled={!interviewDate}
+                className="bg-brand-red/90 hover:bg-brand-red transition text-white font-semibold"
+              >
+                Confirm Schedule
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Job Match Section */}
+      {job?.match && (
+        <div className="bg-gray-50 rounded-xl shadow p-6 space-y-4">
+          <h3 className="font-semibold text-lg text-gray-800">Job Match</h3>
+
+          <div className="flex justify-center">
+            <MatchCircle percentage={job.match.overallMatchPercentage} />
+          </div>
+
+          <p className="text-center text-sm text-gray-600">
+            Based on your skills and experience, this is your match score.
+          </p>
+
+          <div className="space-y-3">
+            {job.match.skills?.map((skill) => (
+              <div className="flex items-center justify-between" key={skill.skillName}>
+                <span className="text-sm text-gray-700">{skill.skillName}</span>
+                <Badge
+                  variant="outline"
+                  className={`${
+                    skill.matchPercentage > 50
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {skill.matchPercentage > 50 ? "Strong Match" : "Partial Match"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+// 🔧 Reusable Components
+const InfoRow = ({ icon, label }: { icon?: React.ReactNode; label: React.ReactNode }) => (
+  <div className="flex items-center gap-2">
+    {icon}
+    <span>{label}</span>
+  </div>
+);
 
+const MatchCircle = ({ percentage }: { percentage: number }) => {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - percentage / 100);
+
+  return (
+    <div className="relative w-32 h-32 flex items-center justify-center">
+      <svg className="w-full h-full" viewBox="0 0 100 100">
+        <circle
+          className="text-gray-300 stroke-current"
+          strokeWidth="10"
+          fill="transparent"
+          r={radius}
+          cx="50"
+          cy="50"
+        />
+        <circle
+          className="text-brand-red stroke-current"
+          strokeWidth="10"
+          strokeLinecap="round"
+          fill="transparent"
+          r={radius}
+          cx="50"
+          cy="50"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          transform="rotate(-90 50 50)"
+        />
+      </svg>
+      <div className="absolute text-2xl font-bold text-brand-red">{percentage}%</div>
+    </div>
+  );
+};
 
 const JobCard = ({ job }: JobCardProps) => {
   return (

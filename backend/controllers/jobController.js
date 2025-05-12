@@ -17,7 +17,144 @@ function convertBigIntToString(obj) {
   }
   return obj;
 }
+exports.getJobByIdCid = async (req, res) => {
+ const { id ,cid} = req.params;
+  const  userId  = cid;
+const role="candidate"
+  try {
+    const conn = await pool.getConnection();
 
+    // 1. Get job and recruiter info
+    const jobRows = await conn.query(`
+      SELECT j.*, rp.company_name, rp.company_website
+      FROM jobs j
+      JOIN recruiter_profiles rp ON j.employer_id = rp.user_id
+      WHERE j.id = ?
+    `, [id]);
+
+    if (jobRows.length === 0) {
+      conn.release();
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const job = jobRows[0];
+
+    if (role === "candidate") {
+      // 2. Candidate profile (location)
+      const candidateRows = await conn.query(
+        `SELECT location FROM candidate_profiles WHERE user_id = ?`,
+        [userId]
+      );
+      const candidate = candidateRows[0];
+
+      // 3. Candidate skills
+      const candidateSkillsRows = await conn.query(`
+        SELECT cs.skill_id, cs.proficiency_level, s.name
+        FROM candidate_skills cs
+        JOIN skills s ON cs.skill_id = s.id
+        WHERE cs.user_id = ?
+      `, [userId]);
+
+      const candidateSkills = candidateSkillsRows || [];
+
+      // 4. Job required skills
+      const jobSkillsRows = await conn.query(`
+        SELECT js.skill_id, js.required_level, s.name
+        FROM job_skills js
+        JOIN skills s ON js.skill_id = s.id
+        WHERE js.job_id = ?
+      `, [id]);
+
+      const jobSkills = jobSkillsRows || [];
+
+      // 5. Skill match breakdown
+      let matched = 0;
+      const skillMatches = jobSkills.map(js => {
+        const candidateSkill = candidateSkills.find(cs => cs.skill_id === js.skill_id);
+        const candidateLevel = candidateSkill ? candidateSkill.proficiency_level : 0;
+        const matchPercent = ((Math.min(candidateLevel, js.required_level) / js.required_level) * 100).toFixed(2);
+
+        matched += Math.min(candidateLevel, js.required_level) / js.required_level;
+
+        return {
+          skillName: js.name,
+          requiredLevel: js.required_level,
+          candidateLevel,
+          matchPercentage: matchPercent
+        };
+      });
+
+      const skillMatchPercentage = jobSkills.length > 0
+        ? (matched / jobSkills.length) * 100
+        : 0;
+
+      // 6. Location match
+
+
+      const locationMatch = job?.location?.trim().toLowerCase() === candidate?.location?.trim().toLowerCase() ? 100 : 0;
+
+      const overallMatch = (skillMatchPercentage * 0.7 + locationMatch * 0.3).toFixed(2);
+
+      conn.release();
+      console.log(job)
+      return res.json(convertBigIntToString({
+        ...job,
+        jobSkills: jobSkills.map(js => ({
+          skillName: js.name,
+          requiredLevel: js.required_level
+        })),
+        match: {
+          skillMatchPercentage: skillMatchPercentage.toFixed(2),
+          locationMatchPercentage: locationMatch,
+          overallMatchPercentage: overallMatch,
+          skills: skillMatches,
+
+        }
+      }));
+
+    } else if (role === "employer") {
+      const ownJob = job.employer_id.toString() === userId.toString();
+      let applications = [];
+      const jobSkillsRows = await conn.query(`
+        SELECT js.skill_id, js.required_level, s.name
+        FROM job_skills js
+        JOIN skills s ON js.skill_id = s.id
+        WHERE js.job_id = ?
+      `, [id]);
+
+      const jobSkills = jobSkillsRows || [];
+      if (ownJob) {
+        applications = await conn.query(`
+          SELECT a.*, u.name, u.email, cp.location, cp.experience_years
+          FROM applications a
+          JOIN users u ON a.candidate_id = u.id
+          LEFT JOIN candidate_profiles cp ON cp.user_id = u.id
+          WHERE a.job_id = ?
+        `, [id]);
+      }
+
+      conn.release();
+
+      return res.json(convertBigIntToString({
+        ...job,
+        jobSkills: jobSkills.map(js => ({
+          skillName: js.name,
+          requiredLevel: js.required_level
+        })),
+        ownJob,
+        applications,
+
+      }));
+    } else {
+      conn.release();
+      return res.status(403).json({ message: "Unauthorized role" });
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Failed to fetch job" });
+  }
+};
 
 exports.getJobById = async (req, res) => {
   const { id } = req.params;
@@ -159,33 +296,60 @@ exports.getJobById = async (req, res) => {
 };
 // GET /jobs
 exports.getAllJobs = async (req, res) => {
-  const { page, limit, status } = req.query;
-
-  let sql = "SELECT * FROM jobs";
-  const params = [];
-
-  if (status) {
-    sql += " WHERE status = ?";
-    params.push(status);
-  }
-
-  sql += " ORDER BY posted_at DESC";
-
-  // If pagination params provided
-  if (page && limit) {
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    sql += " LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), offset);
-  }
-
+  let conn;
   try {
-    const conn = await pool.getConnection();
-    const [jobs] = await conn.query(sql, params);
-    conn.release();
-    res.json({ jobs });
+    conn = await pool.getConnection();
+
+    // 1. Get jobs
+const jobRows = await conn.query(`SELECT * FROM jobs ORDER BY posted_at DESC`);
+
+    const jobs = jobRows.map((job) => {
+      const converted = {};
+      for (const key in job) {
+        converted[key] = typeof job[key] === "bigint" ? Number(job[key]) : job[key];
+      }
+      return converted;
+    });
+
+    const jobIds = jobs.map((job) => job.id);
+
+    let jobSkillsMap = {};
+
+    // 2. If there are jobs, fetch their skills
+    if (jobIds.length > 0) {
+      const skillRows = await conn.query(
+        `SELECT js.job_id, js.required_level, s.id AS skill_id, s.name AS skill_name
+         FROM job_skills js
+         JOIN skills s ON js.skill_id = s.id
+         WHERE js.job_id IN (${jobIds.map(() => '?').join(',')})`,
+        jobIds
+      );
+
+      jobSkillsMap = skillRows.reduce((acc, row) => {
+        const jobId = Number(row.job_id);
+        if (!acc[jobId]) acc[jobId] = [];
+        acc[jobId].push({
+          skill_id: Number(row.skill_id),
+          name: row.skill_name,
+          required_level: row.required_level
+        });
+        return acc;
+      }, {});
+    }
+
+    // 3. Attach skills to each job
+    const jobsWithSkills = jobs.map((job) => ({
+      ...job,
+      skills: jobSkillsMap[job.id] || []
+    }));
+
+    res.status(200).json({ jobs: jobsWithSkills });
+
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error in getAllJobs:", err);
     res.status(500).json({ message: "Failed to fetch jobs" });
+  } finally {
+    if (conn) conn.release();
   }
 };
 exports.getAllJobsEmployer = async (req, res) => {

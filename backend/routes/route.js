@@ -18,8 +18,8 @@ const { roleCheck } = require("../middlewares/roleMiddleware");
 // ───────────────────── AUTH ─────────────────────
 router.post("/auth/register", authController.register);
 router.post("/auth/login", authController.login);
-router.post('/apply/:id', authenticate,appController.createApplication);
-router.get('/getapplications',authenticate, appController.getApplications);
+router.post('/apply/:id', authenticate, appController.createApplication);
+router.get('/getapplications', authenticate, appController.getApplications);
 // ──────────────────── PROFILE ───────────────────
 router.get("/profile", authenticate, profileController.getProfile);
 router.put("/profile/update", authenticate, profileController.updateProfile);
@@ -37,12 +37,16 @@ router.put(
   roleCheck("employer"),
   interviewController.updateInterview
 );
-
+router.get(
+  "/interviews",
+  authenticate,
+  interviewController.getUserInterviews
+);
 // ───────────────────── JOBS ─────────────────────
 router.get("/jobs/emp", authenticate, jobController.getAllJobsEmployer);
 router.get("/jobs", jobController.getAllJobs);
-router.get("/jobs/:id", authenticate,jobController.getJobById);
-
+router.get("/jobs/:id", authenticate, jobController.getJobById);
+router.get("/jobs/:id/:cid", authenticate, jobController.getJobByIdCid);
 router.post(
   "/jobs",
   authenticate,

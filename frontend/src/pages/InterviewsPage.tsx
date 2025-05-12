@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/providers/AuthProvider';
 import { InterviewForm } from '@/components/interview/InterviewForm';
@@ -56,32 +56,43 @@ export default function InterviewsPage() {
   const { toast } = useToast();
   const [interviews, setInterviews] = useState<Interview[]>(mockInterviews);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [applications, setapplications] = useState<any>(null);
+  const role=localStorage.getItem("role")
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/interviews`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
 
-  const handleScheduleInterview = async (data: CreateInterviewDto) => {
-    // Mock interview creation
-    const newInterview: Interview = {
-      id: interviews.length + 1,
-      ...data,
-      status: 'scheduled',
-      job_title: mockApplications.find(app => app.id === data.application_id)?.job_title || '',
-      candidate_name: mockApplications.find(app => app.id === data.application_id)?.candidate_name || '',
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile");
+        }
+
+        const data = await response.json();
+        setapplications(data);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+
+      }
     };
 
-    setInterviews([newInterview, ...interviews]);
-    setIsDialogOpen(false);
-    toast({
-      title: 'Success',
-      description: 'Interview scheduled successfully',
-    });
-  };
+    fetchProfile();
+  }, []);
 
   return (
     <>
       <Navbar />
       <div className="container py-6 space-y-6 mt-20">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Interviews</h1>
-        {user?.role === 'employer' && (
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Interviews</h1>
+          {/* {user?.role === 'employer' && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>Schedule Interview</Button>
@@ -96,17 +107,17 @@ export default function InterviewsPage() {
               />
             </DialogContent>
           </Dialog>
+        )} */}
+        </div>
+
+        {interviews.length > 0 ? (
+          <InterviewList interviews={applications} userRole={role} />
+        ) : (
+          <div className="text-center py-10 text-muted-foreground">
+            No interviews scheduled yet.
+          </div>
         )}
       </div>
-
-      {interviews.length > 0 ? (
-        <InterviewList interviews={interviews} userRole={user?.role || 'candidate'} />
-      ) : (
-        <div className="text-center py-10 text-muted-foreground">
-          No interviews scheduled yet.
-        </div>
-      )}
-    </div>
     </>
   );
 }

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState ,useEffect} from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -110,8 +110,69 @@ const mockJobs = [
     logo: '⚙️',
   },
 ];
-
+const JobCard = ({ job }: JobCardProps) => {
+  return (
+    <div className={`bg-card dark:bg-card rounded-xl overflow-hidden transition-all hover:shadow-lg border-2`}>
+      <div className="p-6">
+        <div className="flex">
+          <div className="flex-grow">
+            <Link to={`/job/${job.id}`}>
+              <h3 className="text-xl font-semibold mb-1 hover:text-brand-red transition-colors">
+                {job.title}
+              </h3>
+            </Link>
+            
+            <div className="flex flex-wrap gap-y-2 text-sm text-muted-foreground mb-4">
+              <div className="flex items-center mr-4">
+                <Briefcase className="h-4 w-4 mr-1" />
+                <span>{job.company}</span>
+              </div>
+              
+              <div className="flex items-center mr-4">
+                <MapPin className="h-4 w-4 mr-1" />
+                <span>{job.location}</span>
+              </div>
+              
+              <div className="flex items-center mr-4">
+                <DollarSign className="h-4 w-4 mr-1" />
+                <span>{job.salary}</span>
+              </div>
+              
+              <div className="flex items-center mr-4">
+                <Clock className="h-4 w-4 mr-1" />
+                <span>{job.posted_at}</span>
+              </div>
+            </div>
+            
+  <p className="text-sm mb-4 line-clamp-3 w-3/5">{job.description}</p>
+            
+            <div className="flex flex-wrap gap-2 mb-4">
+              {job.skills.map((skill, index) => (
+                <span 
+                  key={index} 
+                  className="text-xs bg-muted px-3 py-1 rounded-full"
+                >
+                  {skill?.name}
+                </span>
+              ))}
+            </div>
+            
+            <div className="flex justify-between items-center">
+              
+              <Link to={`/job/${job.id}`}>
+                <Button variant="outline" className="text-sm h-9">
+                  View Details
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 const Jobs = () => {
+      const [applications, setapplications] = useState<any>(null);
   const [filters, setFilters] = useState({
     search: '',
     location: '',
@@ -182,7 +243,33 @@ const Jobs = () => {
       },
     });
   };
+     const fetchApplications = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/jobs`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
 
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile");
+        }
+
+        const data = await response.json();
+        setapplications(data);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+
+      }
+    };
+      useEffect(() => {
+
+        fetchApplications();
+      }, []);
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -196,7 +283,7 @@ const Jobs = () => {
                 Find Your Perfect Job Match
               </h1>
               
-              <div className="bg-white dark:bg-brand-purple/40 shadow-xl rounded-xl p-4">
+              {/* <div className="bg-white dark:bg-brand-purple/40 shadow-xl rounded-xl p-4">
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
@@ -224,7 +311,7 @@ const Jobs = () => {
                     Search Jobs
                   </Button>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </section>
@@ -233,8 +320,8 @@ const Jobs = () => {
         <section className="py-12">
           <div className="container mx-auto px-4">
             <div className="flex flex-col lg:flex-row gap-8">
-              {/* Filter Sidebar - Desktop */}
-              <div className="hidden lg:block w-80 shrink-0">
+
+              {/* <div className="hidden lg:block w-80 shrink-0">
                 <FilterSidebar 
                   filters={filters} 
                   handleFilterChange={handleFilterChange}
@@ -243,10 +330,9 @@ const Jobs = () => {
                   formatSalary={formatSalary}
                   resetFilters={resetFilters}
                 />
-              </div>
-              
-              {/* Mobile Filter Button */}
-              <div className="lg:hidden mb-4">
+              </div> */}
+
+              {/* <div className="lg:hidden mb-4">
                 <Button 
                   variant="outline" 
                   className="w-full flex items-center justify-center gap-2"
@@ -255,10 +341,10 @@ const Jobs = () => {
                   <Filter className="h-4 w-4" />
                   <span>Filters</span>
                 </Button>
-              </div>
+              </div> */}
               
               {/* Mobile Filter Sidebar */}
-              {mobileSidebarOpen && (
+              {/* {mobileSidebarOpen && (
                 <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
                   <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-background shadow-lg animate-slide-in">
                     <div className="flex items-center justify-between p-4 border-b">
@@ -279,25 +365,25 @@ const Jobs = () => {
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
               
               {/* Job Listings */}
               <div className="flex-grow">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold">Available Jobs</h2>
                   
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Sort by:</span>
                     <select className="p-2 rounded-md border bg-transparent text-sm">
                       <option>Most Relevant</option>
                       <option>Newest</option>
                       <option>Highest Salary</option>
                     </select>
-                  </div>
+                  </div> */}
                 </div>
                 
                 <div className="space-y-6">
-                  {mockJobs.map((job, index) => (
+                  {applications?.jobs?.map((job, index) => (
                     <AnimatedElement key={job.id} delay={index * 100}>
                       <JobCard job={job} />
                     </AnimatedElement>
@@ -537,87 +623,13 @@ interface JobCardProps {
     location: string;
     type: string;
     salary: string;
-    posted: string;
+    posted_at: string;
     description: string;
-    skills: string[];
+    skills: any;
     logo: string;
     featured?: boolean;
   };
 }
 
-const JobCard = ({ job }: JobCardProps) => {
-  return (
-    <div className={`bg-card dark:bg-card rounded-xl overflow-hidden transition-all hover:shadow-lg border-2 ${job.featured ? 'border-brand-red/20' : 'border-transparent'}`}>
-      {job.featured && (
-        <div className="bg-brand-red text-white text-xs font-medium px-3 py-1 text-center">
-          Featured Job
-        </div>
-      )}
-      
-      <div className="p-6">
-        <div className="flex">
-          <div className="mr-4 flex-shrink-0 w-12 h-12 flex items-center justify-center bg-muted rounded-md text-2xl">
-            {job.logo}
-          </div>
-          
-          <div className="flex-grow">
-            <Link to={`/job/${job.id}`}>
-              <h3 className="text-xl font-semibold mb-1 hover:text-brand-red transition-colors">
-                {job.title}
-              </h3>
-            </Link>
-            
-            <div className="flex flex-wrap gap-y-2 text-sm text-muted-foreground mb-4">
-              <div className="flex items-center mr-4">
-                <Briefcase className="h-4 w-4 mr-1" />
-                <span>{job.company}</span>
-              </div>
-              
-              <div className="flex items-center mr-4">
-                <MapPin className="h-4 w-4 mr-1" />
-                <span>{job.location}</span>
-              </div>
-              
-              <div className="flex items-center mr-4">
-                <DollarSign className="h-4 w-4 mr-1" />
-                <span>{job.salary}</span>
-              </div>
-              
-              <div className="flex items-center mr-4">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>{job.posted}</span>
-              </div>
-            </div>
-            
-            <p className="text-sm mb-4 line-clamp-2">{job.description}</p>
-            
-            <div className="flex flex-wrap gap-2 mb-4">
-              {job.skills.map((skill, index) => (
-                <span 
-                  key={index} 
-                  className="text-xs bg-muted px-3 py-1 rounded-full"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium bg-brand-red/10 text-brand-red px-3 py-1 rounded-full">
-                {job.type}
-              </span>
-              
-              <Link to={`/job/${job.id}`}>
-                <Button variant="outline" className="text-sm h-9">
-                  View Details
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default Jobs;

@@ -1,10 +1,10 @@
 const pool = require("../models/db");
-// Utility to safely convert BigInt to string for JSON serialization
+
 function convertBigIntToString(obj) {
   if (Array.isArray(obj)) {
     return obj.map(convertBigIntToString);
   } else if (obj instanceof Date) {
-    return obj.toISOString(); // ✅ preserve proper date string
+    return obj.toISOString(); 
   } else if (obj && typeof obj === "object") {
     return Object.entries(obj).reduce((acc, [key, value]) => {
       if (typeof value === "bigint") {
@@ -24,7 +24,6 @@ const role="candidate"
   try {
     const conn = await pool.getConnection();
 
-    // 1. Get job and recruiter info
     const jobRows = await conn.query(`
       SELECT j.*, rp.company_name, rp.company_website
       FROM jobs j
@@ -40,14 +39,14 @@ const role="candidate"
     const job = jobRows[0];
 
     if (role === "candidate") {
-      // 2. Candidate profile (location)
+
       const candidateRows = await conn.query(
         `SELECT location FROM candidate_profiles WHERE user_id = ?`,
         [userId]
       );
       const candidate = candidateRows[0];
 
-      // 3. Candidate skills
+
       const candidateSkillsRows = await conn.query(`
         SELECT cs.skill_id, cs.proficiency_level, s.name
         FROM candidate_skills cs
@@ -57,7 +56,6 @@ const role="candidate"
 
       const candidateSkills = candidateSkillsRows || [];
 
-      // 4. Job required skills
       const jobSkillsRows = await conn.query(`
         SELECT js.skill_id, js.required_level, s.name
         FROM job_skills js
@@ -67,7 +65,6 @@ const role="candidate"
 
       const jobSkills = jobSkillsRows || [];
 
-      // 5. Skill match breakdown
       let matched = 0;
       const skillMatches = jobSkills.map(js => {
         const candidateSkill = candidateSkills.find(cs => cs.skill_id === js.skill_id);
@@ -87,8 +84,6 @@ const role="candidate"
       const skillMatchPercentage = jobSkills.length > 0
         ? (matched / jobSkills.length) * 100
         : 0;
-
-      // 6. Location match
 
 
       const locationMatch = job?.location?.trim().toLowerCase() === candidate?.location?.trim().toLowerCase() ? 100 : 0;
@@ -163,7 +158,6 @@ exports.getJobById = async (req, res) => {
   try {
     const conn = await pool.getConnection();
 
-    // 1. Get job and recruiter info
     const jobRows = await conn.query(`
       SELECT j.*, rp.company_name, rp.company_website
       FROM jobs j
@@ -179,14 +173,13 @@ exports.getJobById = async (req, res) => {
     const job = jobRows[0];
 
     if (role === "candidate") {
-      // 2. Candidate profile (location)
+
       const candidateRows = await conn.query(
         `SELECT location FROM candidate_profiles WHERE user_id = ?`,
         [userId]
       );
       const candidate = candidateRows[0];
 
-      // 3. Candidate skills
       const candidateSkillsRows = await conn.query(`
         SELECT cs.skill_id, cs.proficiency_level, s.name
         FROM candidate_skills cs
@@ -196,7 +189,7 @@ exports.getJobById = async (req, res) => {
 
       const candidateSkills = candidateSkillsRows || [];
 
-      // 4. Job required skills
+ 
       const jobSkillsRows = await conn.query(`
         SELECT js.skill_id, js.required_level, s.name
         FROM job_skills js
@@ -206,7 +199,6 @@ exports.getJobById = async (req, res) => {
 
       const jobSkills = jobSkillsRows || [];
 
-      // 5. Skill match breakdown
       let matched = 0;
       const skillMatches = jobSkills.map(js => {
         const candidateSkill = candidateSkills.find(cs => cs.skill_id === js.skill_id);
@@ -227,7 +219,6 @@ exports.getJobById = async (req, res) => {
         ? (matched / jobSkills.length) * 100
         : 0;
 
-      // 6. Location match
 
 
       const locationMatch = job?.location?.trim().toLowerCase() === candidate?.location?.trim().toLowerCase() ? 100 : 0;
@@ -294,13 +285,12 @@ exports.getJobById = async (req, res) => {
     return res.status(500).json({ message: "Failed to fetch job" });
   }
 };
-// GET /jobs
+
 exports.getAllJobs = async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
 
-    // 1. Get jobs
 const jobRows = await conn.query(`SELECT * FROM jobs ORDER BY posted_at DESC`);
 
     const jobs = jobRows.map((job) => {
@@ -315,7 +305,6 @@ const jobRows = await conn.query(`SELECT * FROM jobs ORDER BY posted_at DESC`);
 
     let jobSkillsMap = {};
 
-    // 2. If there are jobs, fetch their skills
     if (jobIds.length > 0) {
       const skillRows = await conn.query(
         `SELECT js.job_id, js.required_level, s.id AS skill_id, s.name AS skill_name
@@ -337,7 +326,6 @@ const jobRows = await conn.query(`SELECT * FROM jobs ORDER BY posted_at DESC`);
       }, {});
     }
 
-    // 3. Attach skills to each job
     const jobsWithSkills = jobs.map((job) => ({
       ...job,
       skills: jobSkillsMap[job.id] || []
@@ -362,13 +350,12 @@ exports.getAllJobsEmployer = async (req, res) => {
   try {
     const conn = await pool.getConnection();
 
-    // 1. Fetch jobs posted by this employer
     const jobRows = await conn.query(
       `SELECT * FROM jobs WHERE employer_id = ? ORDER BY posted_at DESC`,
       [userId]
     );
 
-    // Convert BigInts to Numbers
+
     const jobs = jobRows.map((job) => {
       const converted = {};
       for (const key in job) {
@@ -382,7 +369,6 @@ exports.getAllJobsEmployer = async (req, res) => {
 
     let jobSkillsMap = {};
 
-    // 2. If there are jobs, fetch their skills
     if (jobIds.length > 0) {
       const skillRows = await conn.query(
         `SELECT js.job_id, js.required_level, s.id AS skill_id, s.name AS skill_name
@@ -392,7 +378,6 @@ exports.getAllJobsEmployer = async (req, res) => {
         jobIds
       );
 
-      // Group skills by job_id
       jobSkillsMap = skillRows.reduce((acc, row) => {
         const jobId = Number(row.job_id);
         if (!acc[jobId]) acc[jobId] = [];
@@ -405,7 +390,7 @@ exports.getAllJobsEmployer = async (req, res) => {
       }, {});
     }
 
-    // 3. Attach skills to each job
+
     const jobsWithSkills = jobs.map((job) => ({
       ...job,
       skills: jobSkillsMap[job.id] || []
@@ -419,9 +404,9 @@ exports.getAllJobsEmployer = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch employer's jobs" });
   }
 };
-// POST /jobs (employer only)
+
 exports.createJob = async (req, res) => {
-  const { userId } = req.user; // role already verified by middleware
+  const { userId } = req.user; 
   const {
     title,
     description,
@@ -443,15 +428,15 @@ exports.createJob = async (req, res) => {
       [userId, title, description, location, experience_required, status, salary]
     );
 
-    console.log("MySQL result:", result); // Debug log
+    console.log("MySQL result:", result); 
     const jobId = Number(result.insertId);
-    console.log("Created job with ID:", jobId); // Debug log
+    console.log("Created job with ID:", jobId);
 
-    // Verify the job was created by fetching it
+
     const [jobs] = await conn.query("SELECT id FROM jobs WHERE id = ?", [
       jobId,
     ]);
-    console.log("Verification query result:", jobs); // Debug log
+    console.log("Verification query result:", jobs);
 
     if (!jobs || jobs.length === 0) {
       throw new Error("Failed to verify job creation");
@@ -461,7 +446,7 @@ exports.createJob = async (req, res) => {
       message: "Job listing created successfully",
       jobId: jobId,
     };
-    console.log("Sending response:", responseData); // Debug log
+    console.log("Sending response:", responseData); 
 
     conn.release();
     res.status(201).json(responseData);
@@ -470,16 +455,16 @@ exports.createJob = async (req, res) => {
     res.status(500).json({ message: "Failed to create job listing" });
   }
 };
-// POST /jobs/:jobId/skills
+
 exports.addJobSkills = async (req, res) => {
   const { userId } = req.user;
   const { jobId } = req.params;
   const { skills } = req.body;
 
-  console.log("Adding skills for job:", jobId); // Debug log
-  console.log("Skills data:", skills); // Debug log
+  console.log("Adding skills for job:", jobId);
+  console.log("Skills data:", skills); 
 
-  // Validate skills array
+
   if (!Array.isArray(skills) || skills.length === 0) {
     return res.status(400).json({ message: "Skills array is required" });
   }
@@ -487,7 +472,6 @@ exports.addJobSkills = async (req, res) => {
   try {
     const conn = await pool.getConnection();
 
-    // Check if job exists and belongs to current user
     const [jobs] = await conn.query(
       "SELECT * FROM jobs WHERE id = ? AND employer_id = ?",
       [jobId, userId]
@@ -499,7 +483,6 @@ exports.addJobSkills = async (req, res) => {
         .json({ message: "Unauthorized to modify this job or job not found" });
     }
 
-    // Insert skills using ON DUPLICATE to allow updates
     const insertPromises = skills.map(({ skill_id, required_level }) => {
       return conn.query(
         `INSERT INTO job_skills (job_id, skill_id, required_level)
@@ -534,7 +517,7 @@ exports.applyForJob = async (req, res) => {
   try {
     conn = await pool.getConnection();
 
-    // Check if already applied
+
     const [existing] = await conn.query(
       "SELECT * FROM applications WHERE job_id = ? AND candidate_id = ?",
       [jobId, userId]
@@ -544,7 +527,6 @@ exports.applyForJob = async (req, res) => {
       return res.status(400).json({ message: "Already applied to this job" });
     }
 
-    // Fetch job required skills
     const [requiredSkills] = await conn.query(
       `SELECT js.skill_id, js.required_level
          FROM job_skills js
@@ -558,7 +540,6 @@ exports.applyForJob = async (req, res) => {
         .json({ message: "Job has no defined required skills" });
     }
 
-    // Fetch candidate skills
     const [candidateSkills] = await conn.query(
       `SELECT skill_id, proficiency_level
          FROM candidate_skills
@@ -566,13 +547,12 @@ exports.applyForJob = async (req, res) => {
       [userId]
     );
 
-    // Map candidate skills for fast lookup
+
     const candidateSkillMap = new Map();
     candidateSkills.forEach((skill) => {
       candidateSkillMap.set(skill.skill_id, skill.proficiency_level);
     });
 
-    // Calculate score (weighted match %)
     let totalWeight = 0;
     let matchedWeight = 0;
 
@@ -585,7 +565,7 @@ exports.applyForJob = async (req, res) => {
     const score =
       totalWeight > 0 ? ((matchedWeight / totalWeight) * 100).toFixed(2) : 0;
 
-    // Insert application
+
     await conn.query(
       `INSERT INTO applications (job_id, candidate_id, status, score)
          VALUES (?, ?, 'applied', ?)`,

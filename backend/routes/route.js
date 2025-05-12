@@ -42,7 +42,7 @@ router.get(
   authenticate,
   interviewController.getUserInterviews
 );
-// ───────────────────── JOBS ─────────────────────
+
 router.get("/jobs/emp", authenticate, jobController.getAllJobsEmployer);
 router.get("/jobs", jobController.getAllJobs);
 router.get("/jobs/:id", authenticate, jobController.getJobById);
@@ -66,12 +66,10 @@ router.post(
   jobController.applyForJob
 );
 
-// ──────────────────── SKILLS ────────────────────
 router.post("/skills", authenticate, skillController.createSkill);
 router.delete("/skills/:id", authenticate, skillController.deleteSkill);
 router.get("/skills", skillController.getAllSkills);
 
-// ──────────────── CANDIDATE SKILLS ──────────────
 router.post(
   "/candidate-skills",
   authenticate,
@@ -80,7 +78,7 @@ router.post(
 );
 router.get("/candidate-skills", authenticate, skillController.getCandidateSkills);
 router.delete("/candidate-skills/:skill_id", authenticate, skillController.deleteCandidateSkill);
-// ──────────────────── REVIEWS ───────────────────
+
 router.post("/reviews", authenticate, reviewController.createReview);
 router.get("/reviews/:userId", reviewController.getReviewsForUser);
 

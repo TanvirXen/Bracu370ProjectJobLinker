@@ -4,7 +4,7 @@ function convertBigIntToString(obj) {
   if (Array.isArray(obj)) {
     return obj.map(convertBigIntToString);
   } else if (obj instanceof Date) {
-    return obj.toISOString(); // ✅ preserve proper date string
+    return obj.toISOString(); 
   } else if (obj && typeof obj === "object") {
     return Object.entries(obj).reduce((acc, [key, value]) => {
       if (typeof value === "bigint") {
@@ -30,7 +30,6 @@ exports.createInterview = async (req, res) => {
   try {
     conn = await pool.getConnection();
 
-    // Get candidate email and job info
     const result = await conn.query(`
       SELECT u.email, u.name AS candidate_name, j.title AS job_title, j.description AS job_description
       FROM applications a
@@ -46,20 +45,17 @@ exports.createInterview = async (req, res) => {
 
     const candidate = result[0];
 
-    // Insert interview record
     await conn.query(
       `INSERT INTO interviews (application_id, interview_datetime, mode, status, notification_sent)
        VALUES (?, ?, ?, 'scheduled', true)`,
       [application_id, interview_datetime, mode]
     );
 
-    // Update application status to 'interviewed'
     await conn.query(
       `UPDATE applications SET status = 'interviewed' WHERE id = ?`,
       [application_id]
     );
 
-    // Send email to candidate
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {

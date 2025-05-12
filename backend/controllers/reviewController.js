@@ -1,6 +1,6 @@
 const pool = require('../models/db');
 exports.createReview = async (req, res) => {
-    const { userId, role } = req.user; // from JWT middleware
+    const { userId, role } = req.user; 
     const { reviewee_id, rating, comment } = req.body;
   
     if (!reviewee_id || !rating) {
@@ -13,8 +13,7 @@ exports.createReview = async (req, res) => {
   
     try {
       const conn = await pool.getConnection();
-  
-      // Check that reviewee exists and is of opposite role
+
       const [users] = await conn.query(
         'SELECT id, role FROM users WHERE id = ?',
         [reviewee_id]
@@ -30,8 +29,7 @@ exports.createReview = async (req, res) => {
         conn.release();
         return res.status(400).json({ message: 'You can only review users of the opposite role' });
       }
-  
-      // Insert review
+
       await conn.query(
         `INSERT INTO reviews (reviewer_id, reviewee_id, reviewer_role, rating, comment)
          VALUES (?, ?, ?, ?, ?)`,
@@ -45,7 +43,7 @@ exports.createReview = async (req, res) => {
       res.status(500).json({ message: 'Failed to submit review' });
     }
   };
-// GET /reviews/:userId
+
 exports.getReviewsForUser = async (req, res) => {
     const { userId } = req.params;
   

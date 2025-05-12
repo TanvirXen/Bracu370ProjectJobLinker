@@ -3,7 +3,7 @@ function convertBigIntToString(obj) {
   if (Array.isArray(obj)) {
     return obj.map(convertBigIntToString);
   } else if (obj instanceof Date) {
-    return obj.toISOString(); // ✅ preserve proper date string
+    return obj.toISOString(); 
   } else if (obj && typeof obj === "object") {
     return Object.entries(obj).reduce((acc, [key, value]) => {
       if (typeof value === "bigint") {
@@ -16,7 +16,7 @@ function convertBigIntToString(obj) {
   }
   return obj;
 }
-// 📥 Create Application
+
 exports.createApplication = async (req, res) => {
   const { job_id } = req.body;
   const { userId, role } = req.user;
@@ -32,7 +32,7 @@ exports.createApplication = async (req, res) => {
   try {
     const conn = await pool.getConnection();
 
-    // Check if already applied
+
     const existing = await conn.query(
       `SELECT * FROM applications WHERE job_id = ? AND candidate_id = ?`,
       [job_id, userId]
@@ -57,7 +57,7 @@ exports.createApplication = async (req, res) => {
   }
 };
 
-// 📋 Get Applications (role-based)
+
 exports.getApplications = async (req, res) => {
   const { userId, role } = req.user;
 
@@ -66,7 +66,7 @@ exports.getApplications = async (req, res) => {
     let applications = [];
 
     if (role === 'candidate') {
-      // Candidate — get jobs they've applied to
+
       applications = await conn.query(`
         SELECT a.*, j.title, j.location, j.description, j.salary, j.status AS job_status,
                rp.company_name
@@ -78,7 +78,7 @@ exports.getApplications = async (req, res) => {
       `, [userId]);
 
     } else if (role === 'employer') {
-      // Employer — get applications on their jobs
+
       applications = await conn.query(`
         SELECT a.*, j.title, u.name AS candidate_name, u.email, cp.location AS candidate_location, cp.experience_years
         FROM applications a

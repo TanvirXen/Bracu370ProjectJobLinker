@@ -14,8 +14,6 @@ const { name, email, password, role, company_name, company_website, job_title } 
     const hash = await bcrypt.hash(password, 10);
     conn = await pool.getConnection();
     await conn.beginTransaction();
-
-    // FIXED: use proper result destructuring
     const result = await conn.query(
       'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
       [name, email, hash, role]
@@ -63,7 +61,6 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Step 1: Get profile ID from respective table
     let profileId = null;
 
     if (user.role === 'candidate') {
@@ -74,7 +71,6 @@ exports.login = async (req, res) => {
       if (recruiter.length > 0) profileId = recruiter[0].user_id;
     }
 
-    // Step 2: Generate token with profileId
     const token = jwt.sign(
       {
         id: Number(user.id),
@@ -85,12 +81,12 @@ exports.login = async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    // Step 3: Store token
+
     await conn.query('UPDATE users SET jwt_token = ? WHERE id = ?', [token, user.id]);
 
     conn.release();
 
-    // Send token, role, and optionally profileId
+
     res.json({ token, role: user.role, profileId });
 
   } catch (err) {

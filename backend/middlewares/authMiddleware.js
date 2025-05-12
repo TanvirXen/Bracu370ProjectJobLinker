@@ -8,10 +8,10 @@ const authenticate = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = {
-      userId: decoded.id,  // ✅ Map it explicitly to userId
+      userId: decoded.id, 
       role: decoded.role,
     };
-    // console.log(req.user)
+
     next();
   } catch (err) {
     console.error('JWT Error:', err);

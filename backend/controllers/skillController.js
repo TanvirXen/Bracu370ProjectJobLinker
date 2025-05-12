@@ -40,7 +40,6 @@ exports.deleteSkill = async (req, res) => {
   }
 };
 
-// POST /candidate-skills
 exports.addSkillToCandidate = async (req, res) => {
   const { userId, role } = req.user;
   const { skill_id, proficiency_level } = req.body;
@@ -70,9 +69,9 @@ exports.addSkillToCandidate = async (req, res) => {
     res.status(500).json({ message: 'Failed to add skill' });
   }
 };
-// GET /candidate-skills/:userId
+
 exports.getCandidateSkills = async (req, res) => {
-  const { userId, role } = req.user; // extracted from token
+  const { userId, role } = req.user;
 
   if (role !== 'candidate') {
     return res.status(403).json({ message: 'Access denied: Not a candidate' });
@@ -98,14 +97,14 @@ exports.getCandidateSkills = async (req, res) => {
     if (conn) conn.release();
   }
 };
-// GET /skills
+
 exports.getAllSkills = async (req, res) => {
   try {
     const conn = await pool.getConnection();
     const skillsRaw = await conn.query('SELECT id, name FROM skills ORDER BY name ASC');
     conn.release();
 
-    // Convert BigInt id to Number
+
     const skills = skillsRaw.map(skill => ({
       id: Number(skill.id),
       name: skill.name
@@ -120,7 +119,7 @@ exports.getAllSkills = async (req, res) => {
 
 exports.deleteCandidateSkill = async (req, res) => {
   const { userId, role } = req.user;
-  const { skill_id } = req.params; // skill ID passed in the URL
+  const { skill_id } = req.params;
 
   if (role !== 'candidate') {
     return res.status(403).json({ message: 'Only candidates can delete their skills' });

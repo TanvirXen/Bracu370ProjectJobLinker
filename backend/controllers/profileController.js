@@ -59,13 +59,12 @@ exports.getProfile = async (req, res) => {
   }
 };
 exports.updateProfile = async (req, res) => {
-  const { userId, role } = req.user; // Extracted from token
+  const { userId, role } = req.user;
   const conn = await pool.getConnection();
 
   try {
     const { name } = req.body;
 
-    // ✅ Update name in users table if provided
     if (name && name.trim() !== "") {
       await conn.query(
         `UPDATE users SET name = ? WHERE id = ?`,
@@ -73,7 +72,6 @@ exports.updateProfile = async (req, res) => {
       );
     }
 
-    // ✅ Update role-specific profile info
     if (role === "candidate") {
       const { bio, location, experience_years, education } = req.body;
       await conn.query(
@@ -94,7 +92,6 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ message: "Invalid user role" });
     }
 
-    // ✅ Fetch updated user data
     const [userData] = await conn.query(
       `SELECT name, email FROM users WHERE id = ?`,
       [userId]
